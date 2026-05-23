@@ -1204,6 +1204,20 @@ export function getSkillGemToolSchemas(): any[] {
         },
       },
     },
+    {
+      name: "upload_build_to_pobbin",
+      description: "Upload a local PoB build to pobb.in and get a shareable web link plus protocol links that open the build directly in Path of Building.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          build_name: {
+            type: "string",
+            description: "Build file name (e.g. 'MyBuild.xml')",
+          },
+        },
+        required: ["build_name"],
+      },
+    },
   ];
 }
 

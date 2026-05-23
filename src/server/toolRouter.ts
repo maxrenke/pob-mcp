@@ -34,6 +34,7 @@ import { handleCheckBossReadiness } from "../handlers/bossReadinessHandlers.js";
 import { handleSuggestWatchersEye } from "../handlers/jewelAdvisorHandlers.js";
 import { handleSuggestCrafting } from "../handlers/craftingAdvisorHandler.js";
 import { handleFindItemUpgrades as handleFindItemUpgradesNew } from "../handlers/itemShoppingHandler.js";
+import { handleUploadToPobbin } from "../handlers/mobalyticsHandlers.js";
 
 export interface ToolRouterDependencies {
   toolGate: ToolGate;
@@ -737,6 +738,13 @@ export async function routeToolCall(
       };
       return await handleSuggestCrafting(craftingContext, args as any);
     }
+
+    case "upload_build_to_pobbin":
+      if (!args?.build_name) throw new Error("Missing required argument: build_name");
+      return await handleUploadToPobbin(
+        deps.contextBuilder.buildHandlerContext(),
+        { build_name: args.build_name as string }
+      );
 
     default:
       throw new Error(`Unknown tool: ${name}`);
