@@ -1,6 +1,8 @@
 /**
- * pobb.in Upload Handler
+ * pobb.in Handlers
  *
+ * import_from_pobbin     - download a shared build from pobb.in by URL or
+ *                          build ID and save it to the builds directory.
  * upload_build_to_pobbin - encode any local PoB build and upload it to
  *                          pobb.in, returning a web link and protocol links
  *                          for both PoB1 and PoB2.
@@ -29,6 +31,48 @@ function encodeXml(xml: string): string {
     .toString("base64")
     .replace(/\+/g, "-")
     .replace(/\//g, "_");
+}
+
+/**
+ * Download a build code from pobb.in by build ID.
+ * Protocol: GET /pob/<id> returns the URL-safe base64 code as plain text.
+ * Symmetric reverse of the upload (POST /pob/).
+ */
+async function downloadFromPobbin(id: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        hostname: "pobb.in",
+        path: `/pob/${id}`,
+        method: "GET",
+        headers: {
+          "User-Agent": "pob-mcp (+https://github.com/maxrenke/pob-mcp)",
+        },
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk: Buffer) => (data += chunk.toString()));
+        res.on("end", () => {
+          if (res.statusCode !== 200) {
+            reject(
+              new Error(
+                `pobb.in returned HTTP ${res.statusCode}: ${data.slice(0, 200)}`
+              )
+            );
+            return;
+          }
+          const code = data.trim();
+          if (!code) {
+            reject(new Error("pobb.in returned empty body"));
+            return;
+          }
+          resolve(code);
+        });
+      }
+    );
+    req.on("error", reject);
+    req.end();
+  });
 }
 
 /**
@@ -81,6 +125,61 @@ async function uploadToPobbin(
     req.on("error", reject);
     req.write(body);
     req.end();
+  });
+}
+
+/**
+ * Download a shared build from pobb.in and save it to the builds directory.
+ */
+export async function handleImportFromPobbin(
+  context: UploadContext,
+  args: { url_or_id: string; build_name?: string }
+) {
+  return wrapHandler("import from pobb.in", async () => {
+    const input = args.url_or_id.trim();
+    const idMatch = input.match(/pobb\.in\/([A-Za-z0-9_-]+)/);
+    const id = idMatch ? idMatch[1] : input;
+    if (!id || id.length > 64 || !/^[A-Za-z0-9_-]+$/.test(id)) {
+      throw new Error(
+        "Invalid build ID. Pass a full pobb.in URL or a bare build ID (e.g. AbCdEfGh)."
+      );
+    }
+
+    const buildName = (args.build_name || id).trim();
+    if (!buildName) throw new Error("build_name must not be empty");
+
+    const outputXml = sanitizeBuildName(buildName + ".xml", context.pobDirectory);
+
+    const urlSafeCode = await downloadFromPobbin(id);
+    const stdCode = urlSafeCode.replace(/-/g, "+").replace(/_/g, "/");
+
+    let xml: string;
+    try {
+      xml = zlib.inflateSync(Buffer.from(stdCode, "base64")).toString("utf-8");
+    } catch {
+      throw new Error("Could not decode pobb.in response - is the build ID valid?");
+    }
+
+    if (!xml.includes("<PathOfBuilding") || !xml.includes("<Build")) {
+      throw new Error("Downloaded data is not a valid PoB XML document");
+    }
+
+    await fs.writeFile(outputXml, xml, "utf-8");
+
+    const isPoE2 = xml.includes("<PathOfBuilding2>");
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Build imported from pobb.in!\n\n` +
+            `File:   ${buildName}.xml\n` +
+            `Source: https://pobb.in/${id}\n` +
+            `Game:   ${isPoE2 ? "Path of Exile 2" : "Path of Exile 1"}\n` +
+            `\nUse analyze_build with "${buildName}.xml".`,
+        },
+      ],
+    };
   });
 }
 

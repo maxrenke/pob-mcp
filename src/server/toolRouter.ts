@@ -34,7 +34,7 @@ import { handleCheckBossReadiness } from "../handlers/bossReadinessHandlers.js";
 import { handleSuggestWatchersEye } from "../handlers/jewelAdvisorHandlers.js";
 import { handleSuggestCrafting } from "../handlers/craftingAdvisorHandler.js";
 import { handleFindItemUpgrades as handleFindItemUpgradesNew } from "../handlers/itemShoppingHandler.js";
-import { handleUploadToPobbin } from "../handlers/mobalyticsHandlers.js";
+import { handleImportFromPobbin, handleUploadToPobbin } from "../handlers/mobalyticsHandlers.js";
 
 export interface ToolRouterDependencies {
   toolGate: ToolGate;
@@ -738,6 +738,16 @@ export async function routeToolCall(
       };
       return await handleSuggestCrafting(craftingContext, args as any);
     }
+
+    case "import_from_pobbin":
+      if (!args?.url_or_id) throw new Error("Missing required argument: url_or_id");
+      return await handleImportFromPobbin(
+        deps.contextBuilder.buildHandlerContext(),
+        {
+          url_or_id: args.url_or_id as string,
+          build_name: args.build_name as string | undefined,
+        }
+      );
 
     case "upload_build_to_pobbin":
       if (!args?.build_name) throw new Error("Missing required argument: build_name");

@@ -1205,6 +1205,24 @@ export function getSkillGemToolSchemas(): any[] {
       },
     },
     {
+      name: "import_from_pobbin",
+      description: "Download a shared Path of Building build from pobb.in by URL or build ID and save it to your builds directory. Accepts a full URL (https://pobb.in/AbCdEfGh) or a bare ID. Works for both PoE1 and PoE2 builds.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          url_or_id: {
+            type: "string",
+            description: "Full pobb.in URL (https://pobb.in/<id>) or bare build ID (e.g. AbCdEfGh)",
+          },
+          build_name: {
+            type: "string",
+            description: "Output filename without extension (default: the pobb.in build ID)",
+          },
+        },
+        required: ["url_or_id"],
+      },
+    },
+    {
       name: "upload_build_to_pobbin",
       description: "Upload a local PoB build to pobb.in and get a shareable web link plus protocol links that open the build directly in Path of Building.",
       inputSchema: {
