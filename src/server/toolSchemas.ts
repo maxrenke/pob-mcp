@@ -1230,6 +1230,18 @@ export function getSkillGemToolSchemas(): any[] {
             type: "boolean",
             description: "When merge=true, keep Mobalytics variant order instead of sorting leveling first (default: false)",
           },
+          class_name: {
+            type: "string",
+            description: "Override the detected class name (e.g. 'Witch') when auto-detection fails",
+          },
+          ascendancy: {
+            type: "string",
+            description: "Override the detected ascendancy name (e.g. 'Elementalist') when auto-detection fails",
+          },
+          level: {
+            type: "number",
+            description: "Character level to record in the build (default: 90)",
+          },
         },
         required: ["url"],
       },

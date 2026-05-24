@@ -56,6 +56,9 @@ export async function handleImportFromMobalytics(
     variant?: string;
     build_name?: string;
     no_reorder?: boolean;
+    class_name?: string;
+    ascendancy?: string;
+    level?: number;
   }
 ) {
   return wrapHandler("import from Mobalytics", async () => {
@@ -77,6 +80,9 @@ export async function handleImportFromMobalytics(
     } else {
       argv.push("--no-merge", "--variant", variant);
     }
+    if (args.class_name) argv.push("--class", args.class_name);
+    if (args.ascendancy) argv.push("--ascendancy", args.ascendancy);
+    if (args.level !== undefined) argv.push("--level", String(args.level));
 
     let stdout: string;
     let stderr: string;
