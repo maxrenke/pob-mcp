@@ -1205,6 +1205,36 @@ export function getSkillGemToolSchemas(): any[] {
       },
     },
     {
+      name: "import_from_mobalytics",
+      description: "Scrape a Mobalytics PoE1 build guide and import it into your Path of Building builds directory. Delegates to the guide2pob Python package which must be installed (pip install -e ~/repos/guide2pob). Creates a ready-to-use .xml file you can immediately open with analyze_build.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "Mobalytics build URL, e.g. https://mobalytics.gg/poe/builds/my-build",
+          },
+          merge: {
+            type: "boolean",
+            description: "Merge all build variants into one build with switchable Tree specs and Item Sets (default: true)",
+          },
+          variant: {
+            type: "string",
+            description: "Which variant to import when merge=false: '0', '1', '2', ... (default: '0')",
+          },
+          build_name: {
+            type: "string",
+            description: "Output filename without extension (default: derived from URL slug)",
+          },
+          no_reorder: {
+            type: "boolean",
+            description: "When merge=true, keep Mobalytics variant order instead of sorting leveling first (default: false)",
+          },
+        },
+        required: ["url"],
+      },
+    },
+    {
       name: "import_from_pobbin",
       description: "Download a shared Path of Building build from pobb.in by URL or build ID and save it to your builds directory. Accepts a full URL (https://pobb.in/AbCdEfGh) or a bare ID. Works for both PoE1 and PoE2 builds.",
       inputSchema: {

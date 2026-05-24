@@ -1,24 +1,134 @@
 /**
- * pobb.in Handlers
+ * Guide Import Handlers (PoE1)
  *
+ * import_from_mobalytics - scrape a Mobalytics PoE1 build guide and write it
+ *                          to the PoB builds directory, delegating to the
+ *                          guide2pob Python package (github.com/maxrenke/guide2pob).
  * import_from_pobbin     - download a shared build from pobb.in by URL or
  *                          build ID and save it to the builds directory.
  * upload_build_to_pobbin - encode any local PoB build and upload it to
  *                          pobb.in, returning a web link and protocol links
  *                          for both PoB1 and PoB2.
  *
- * Encoding/upload logic mirrors moba2pob (github.com/maxrenke/moba2pob)
+ * Encoding/upload logic mirrors guide2pob (github.com/maxrenke/guide2pob)
  * without requiring the Python package as a dependency.
  */
 
+import { execFile } from "child_process";
+import { promisify } from "util";
 import fs from "fs/promises";
 import zlib from "zlib";
 import https from "https";
 import { wrapHandler } from "../utils/errorHandling.js";
 import { sanitizeBuildName } from "../utils/pathSanitizer.js";
 
+const execFileAsync = promisify(execFile);
+
+interface ImportContext {
+  pobDirectory: string;
+  buildService: { invalidateBuild: (name: string) => void };
+}
+
 interface UploadContext {
   pobDirectory: string;
+}
+
+/** Derive a filesystem-safe slug from a Mobalytics URL or any string. */
+function buildNameFromUrl(url: string): string {
+  const m = url.match(/\/builds\/([^/?#]+)/);
+  const slug = m ? m[1] : "imported-build";
+  return slug.replace(/[^a-zA-Z0-9_\- ]/g, "_").slice(0, 80);
+}
+
+/**
+ * Import a Mobalytics PoE1 guide into the PoB builds directory.
+ *
+ * Shells out to `python -m guide2pob --game poe1`, captures the base64 import
+ * code on stdout, decodes it to XML, and writes <pobDirectory>/<build_name>.xml.
+ *
+ * Requires the guide2pob package: pip install -e ~/repos/guide2pob
+ */
+export async function handleImportFromMobalytics(
+  context: ImportContext,
+  args: {
+    url: string;
+    merge?: boolean;
+    variant?: string;
+    build_name?: string;
+    no_reorder?: boolean;
+  }
+) {
+  return wrapHandler("import from Mobalytics", async () => {
+    const { url } = args;
+    const merge = args.merge ?? true;
+    const variant = args.variant ?? "0";
+    const noReorder = args.no_reorder ?? false;
+    const buildName = (args.build_name || buildNameFromUrl(url)).trim();
+
+    if (!buildName) throw new Error("build_name must not be empty");
+    if (!url.startsWith("http")) throw new Error("url must start with http");
+
+    const outputXml = sanitizeBuildName(buildName + ".xml", context.pobDirectory);
+
+    const argv: string[] = ["-m", "guide2pob", url, "--game", "poe1"];
+    if (merge) {
+      argv.push("--merge");
+      if (noReorder) argv.push("--no-reorder");
+    } else {
+      argv.push("--no-merge", "--variant", variant);
+    }
+
+    let stdout: string;
+    let stderr: string;
+    try {
+      const result = await execFileAsync("python", argv, {
+        maxBuffer: 10 * 1024 * 1024,
+        timeout: 60_000,
+      });
+      stdout = result.stdout;
+      stderr = result.stderr;
+    } catch (err: any) {
+      const msg = err.stderr?.trim() || err.message;
+      throw new Error(`guide2pob failed: ${msg}`);
+    }
+
+    const code = stdout.trim();
+    if (!code) throw new Error("guide2pob produced no output on stdout");
+
+    let xml: string;
+    try {
+      xml = zlib.inflateSync(Buffer.from(code, "base64")).toString("utf-8");
+    } catch {
+      throw new Error("Could not decode guide2pob output - is the URL valid?");
+    }
+
+    // PoE1 root is <PathOfBuilding>, not <PathOfBuilding2>
+    if (!xml.includes("<PathOfBuilding>") && !xml.includes("<PathOfBuilding ")) {
+      throw new Error("Decoded output is not a valid PoB XML document");
+    }
+
+    await fs.writeFile(outputXml, xml, "utf-8");
+    context.buildService.invalidateBuild(buildName + ".xml");
+
+    const summaryLines = stderr
+      .split("\n")
+      .filter((l) => l.startsWith("# ") || l.startsWith("build:"))
+      .join("\n");
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            `Imported successfully!\n\n` +
+            `File:   ${buildName}.xml\n` +
+            `Source: ${url}\n` +
+            (summaryLines ? `\n${summaryLines}\n` : "") +
+            `\nUse analyze_build with "${buildName}.xml".`,
+        },
+      ],
+    };
+  });
 }
 
 /**
