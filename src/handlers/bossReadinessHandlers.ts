@@ -16,6 +16,17 @@ interface BossThreshold {
 }
 
 const BOSS_THRESHOLDS: Record<string, BossThreshold> = {
+  early_maps: {
+    name: 'Ready for Maps (T1-5 / very first steps)',
+    minLife: 1800, minDPS: 20_000, minEHP: 12_000,
+    notes: [
+      'This is a LEAGUE-START bar, not an endgame one — just enough to not get one-shot by a T1-5 rare pack.',
+      'Capped elemental resists (75%) matter far more than raw DPS at this stage.',
+      'Chaos resist does not need to be capped yet — 0%+ (not deeply negative) is the realistic early target.',
+      'If resists/EHP pass but DPS is still low, that is fine for T1-5 — just play a bit more carefully and re-check before pushing T6+.',
+    ],
+    mechanics: ['Avoid "no life regen" / "no life leech" strongbox and map mods until EHP is higher', 'Reflect map mod: check your build guide for whether to avoid it'],
+  },
   shaper: {
     name: 'The Shaper',
     minLife: 5000, minDPS: 1_000_000, minEHP: 30_000,
@@ -74,6 +85,11 @@ const BOSS_ALIASES: Record<string, string> = {
   'eater of worlds': 'eater',
   'endgame': 'pinnacle',
   'generic': 'pinnacle',
+  'maps': 'early_maps',
+  'ready for maps': 'early_maps',
+  'league start': 'early_maps',
+  'white maps': 'early_maps',
+  't1': 'early_maps',
 };
 
 export async function handleCheckBossReadiness(context: BossReadinessContext, boss: string) {

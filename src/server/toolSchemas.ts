@@ -1735,6 +1735,58 @@ export function getBuildGoalsToolSchemas(): any[] {
         required: ["slot"],
       },
     },
+    {
+      name: "import_character",
+      description: "Fetch a character's equipped items from GGG's public character-window API (no login/session used). ONLY works if the account's profile is set to PUBLIC at pathofexile.com/my-account/privacy — this tool never accepts or sends a POESESSID/session cookie, so it can only see what a logged-out visitor to the profile could see. Returns a raw item/mod summary (not a full PoB import) — use it for a quick gap check, then cross-verify anything critical in PoB itself.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          account: {
+            type: "string",
+            description: "PoE account name, in Name#1234 format (not the display name shown in-game)",
+          },
+          character: {
+            type: "string",
+            description: "Exact character name, case-sensitive",
+          },
+          realm: {
+            type: "string",
+            description: "Realm: 'pc' (default), 'xbox', or 'sony'",
+          },
+        },
+        required: ["account", "character"],
+      },
+    },
+    {
+      name: "import_stash_tab",
+      description: "Fetch a stash tab's contents (currency, items) from GGG's public character-window API (no login/session used). Requires BOTH: (1) the account's privacy setting for public stash viewing at pathofexile.com/my-account/privacy, AND (2) the individual stash tab itself flagged Public in-game. This tool never accepts or sends a POESESSID/session cookie. Pass either tab_index or tab_name (name requires an extra lookup call to resolve the index).",
+      inputSchema: {
+        type: "object",
+        properties: {
+          account: {
+            type: "string",
+            description: "PoE account name, in Name#1234 format",
+          },
+          league: {
+            type: "string",
+            description: "Exact league name the stash belongs to",
+          },
+          tab_index: {
+            type: "number",
+            description: "Zero-based stash tab index. Use this if known; faster than tab_name.",
+          },
+          tab_name: {
+            type: "string",
+            description: "Stash tab display name to look up (case-insensitive). Requires the account's public tab list to resolve.",
+          },
+          realm: {
+            type: "string",
+            description: "Realm: 'pc' (default), 'xbox', or 'sony'",
+          },
+        },
+        required: ["account", "league"],
+      },
+    },
   ];
 }
 

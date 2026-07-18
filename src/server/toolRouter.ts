@@ -35,6 +35,7 @@ import { handleSuggestWatchersEye } from "../handlers/jewelAdvisorHandlers.js";
 import { handleSuggestCrafting } from "../handlers/craftingAdvisorHandler.js";
 import { handleFindItemUpgrades as handleFindItemUpgradesNew } from "../handlers/itemShoppingHandler.js";
 import { handleImportFromMobalytics, handleImportFromPobbin, handleUploadToPobbin } from "../handlers/mobalyticsHandlers.js";
+import { handleImportCharacter, handleImportStashTab } from "../handlers/characterImportHandlers.js";
 
 export interface ToolRouterDependencies {
   toolGate: ToolGate;
@@ -738,6 +739,16 @@ export async function routeToolCall(
       };
       return await handleSuggestCrafting(craftingContext, args as any);
     }
+
+    case "import_character":
+      if (!args?.account) throw new Error("Missing required argument: account");
+      if (!args?.character) throw new Error("Missing required argument: character");
+      return await handleImportCharacter(args as any);
+
+    case "import_stash_tab":
+      if (!args?.account) throw new Error("Missing required argument: account");
+      if (!args?.league) throw new Error("Missing required argument: league");
+      return await handleImportStashTab(args as any);
 
     case "import_from_mobalytics":
       if (!args?.url) throw new Error("Missing required argument: url");
