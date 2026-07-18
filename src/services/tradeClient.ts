@@ -11,6 +11,38 @@ import {
 } from '../types/tradeTypes.js';
 
 /**
+ * GGG's /api/trade/fetch endpoint returns explicitMods/implicitMods/craftedMods
+ * as either plain strings (older shape) or rich objects
+ * `{ description, hash, mods: [{ magnitudes: [{min,max}] }] }` (current shape,
+ * confirmed 2026-07-19). The rest of this codebase's ItemListing contract is
+ * `string[]` for those fields, so normalize here at the ingestion boundary
+ * rather than touching every downstream consumer.
+ */
+function normalizeModArray(mods: unknown): string[] {
+  if (!Array.isArray(mods)) return [];
+  return mods.map((m) => {
+    if (typeof m === 'string') return m;
+    if (m && typeof m === 'object' && typeof (m as any).description === 'string') {
+      return (m as any).description as string;
+    }
+    return String(m);
+  });
+}
+
+function normalizeItemListing(listing: ItemListing): ItemListing {
+  if (!listing?.item) return listing;
+  return {
+    ...listing,
+    item: {
+      ...listing.item,
+      explicitMods: normalizeModArray((listing.item as any).explicitMods),
+      implicitMods: normalizeModArray((listing.item as any).implicitMods),
+      craftedMods: normalizeModArray((listing.item as any).craftedMods),
+    },
+  };
+}
+
+/**
  * Client for interacting with the Path of Exile Trade API
  *
  * Features:
@@ -103,7 +135,7 @@ export class TradeApiClient {
       this.makeRequest<FetchResult>('GET', url)
     );
 
-    const items = result.result || [];
+    const items = (result.result || []).map(normalizeItemListing);
     this.putInCache(cacheKey, items, this.defaultCacheTTL);
     return items;
   }
